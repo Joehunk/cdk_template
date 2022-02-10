@@ -2,7 +2,7 @@
   "name": "cdk_template",
   "version": "0.1.0",
   "bin": {
-    "cdk_template": "bin/cdk_template.js"
+    "cdk_template": "dist/bin/cdk_template.js"
   },
   "scripts": {
     "build": "tsc",
