@@ -10,13 +10,20 @@ module.exports = {
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "ecmaVersion": "latest",
+    "project": "tsconfig.json",
     "sourceType": "module"
   },
   "plugins": [
     "@typescript-eslint"
   ],
   "rules": {
-    "indent": [
+    "block-spacing": [
+      "error"
+    ],
+    "brace-style": "off",
+    "@typescript-eslint/brace-style": ["error"],
+    "indent": "off",
+    "@typescript-eslint/indent": [
       "error",
       2
     ],
@@ -24,6 +31,7 @@ module.exports = {
       "error",
       "unix"
     ],
+    "@typescript-eslint/no-floating-promises": ["error"],
     "quotes": [
       "error",
       "double"
@@ -34,6 +42,11 @@ module.exports = {
     ],
     "sort-imports": [
       "error"
+    ],
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      { "varsIgnorePattern": "[Ii]gnored", "argsIgnorePattern": "^_" }
     ]
   }
 };
