@@ -31,6 +31,9 @@ module.exports = {
     "semi": [
       "error",
       "always"
+    ],
+    "sort-imports": [
+      "error"
     ]
   }
 };
