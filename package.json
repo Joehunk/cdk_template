@@ -9,8 +9,8 @@
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
-    "lint": "eslint \"bin/**/*.ts\" \"lib/**/*.ts\"",
-    "lint-fix": "eslint --fix \"bin/**/*.ts\" \"lib/**/*.ts\""
+    "lint": "eslint \"bin/**/*.ts\" \"lib/**/*.ts\" \"test/**/*.ts\"",
+    "lint-fix": "eslint --fix \"bin/**/*.ts\" \"lib/**/*.ts\" \"test/**/*.ts\""
   },
   "devDependencies": {
     "@types/jest": "^26.0.10",

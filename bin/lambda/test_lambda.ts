@@ -6,10 +6,14 @@ interface Response {
   payload: string;
 }
 
-type TestLambdaHandler = (event: Event) => Promise<Response>
+type TestLambdaHandler = (event: Event) => Promise<Response>;
 
-export const handler: TestLambdaHandler = async (_event: Event) => {
+export const handler: TestLambdaHandler = async (event: Event) => {
+  if (event.payload === "crash") {
+    throw new Error("I am crashing.");
+  }
+
   return {
-    payload: "Hello world"
+    payload: "Hello world!!!",
   };
 };

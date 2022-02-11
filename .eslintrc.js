@@ -40,9 +40,8 @@ module.exports = {
       "error",
       "always"
     ],
-    "sort-imports": [
-      "error"
-    ],
+    "sort-imports": [ "error"] ,
+    "no-duplicate-imports": [ "error" ],
     "no-unused-vars": "off",
     "@typescript-eslint/no-unused-vars": [
       "error",
