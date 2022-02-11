@@ -10,9 +10,11 @@
     "test": "jest",
     "cdk": "cdk",
     "lint": "eslint \"bin/**/*.ts\" \"lib/**/*.ts\" \"test/**/*.ts\"",
-    "lint-fix": "eslint --fix \"bin/**/*.ts\" \"lib/**/*.ts\" \"test/**/*.ts\""
+    "lint-fix": "eslint --fix \"bin/**/*.ts\" \"lib/**/*.ts\" \"test/**/*.ts\"",
+    "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=. --proto_path=./bin/proto ./bin/proto/simple.proto"
   },
   "devDependencies": {
+    "@protobuf-ts/protoc": "^2.2.2",
     "@types/jest": "^26.0.10",
     "@types/node": "10.17.27",
     "@typescript-eslint/eslint-plugin": "^5.11.0",
@@ -23,6 +25,7 @@
     "jest": "^26.4.2",
     "ts-jest": "^26.2.0",
     "ts-node": "^9.0.0",
+    "ts-proto": "^1.104.0",
     "typescript": "^3.9.10"
   },
   "dependencies": {
