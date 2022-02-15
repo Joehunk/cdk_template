@@ -5,7 +5,8 @@ module.exports = {
   },
   "extends": [
     "eslint:recommended",
-    "plugin:@typescript-eslint/recommended"
+    "plugin:@typescript-eslint/recommended",
+    "prettier"
   ],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
@@ -14,7 +15,8 @@ module.exports = {
     "sourceType": "module"
   },
   "plugins": [
-    "@typescript-eslint"
+    "@typescript-eslint",
+    "sort-imports-es6-autofix"
   ],
   "rules": {
     "block-spacing": [
@@ -40,7 +42,8 @@ module.exports = {
       "error",
       "always"
     ],
-    "sort-imports": [ "error"] ,
+    "sort-imports": "off",
+    "sort-imports-es6-autofix/sort-imports-es6": "error",
     "no-duplicate-imports": [ "error" ],
     "no-unused-vars": "off",
     "@typescript-eslint/no-unused-vars": [
