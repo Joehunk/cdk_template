@@ -2,22 +2,28 @@
   "name": "cdk_template",
   "version": "0.1.0",
   "bin": {
-    "cdk_template": "bin/cdk_template.js"
+    "cdk_template": "dist/bin/cdk_template.js"
   },
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "lint": "eslint \"bin/**/*.ts\" \"lib/**/*.ts\" \"test/**/*.ts\"",
+    "lint-fix": "eslint --fix \"bin/**/*.ts\" \"lib/**/*.ts\" \"test/**/*.ts\""
   },
   "devDependencies": {
     "@types/jest": "^26.0.10",
     "@types/node": "10.17.27",
+    "@typescript-eslint/eslint-plugin": "^5.11.0",
+    "@typescript-eslint/parser": "^5.11.0",
+    "aws-cdk": "2.11.0",
+    "esbuild": "^0.14.21",
+    "eslint": "^8.8.0",
     "jest": "^26.4.2",
     "ts-jest": "^26.2.0",
-    "aws-cdk": "2.11.0",
     "ts-node": "^9.0.0",
-    "typescript": "~3.9.7"
+    "typescript": "^3.9.10"
   },
   "dependencies": {
     "aws-cdk-lib": "2.11.0",
