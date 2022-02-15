@@ -1,19 +1,14 @@
-interface Event {
-  payload: string;
-}
+import { HelloWorldRequest, HelloWorldResponse } from "../../../gensrc/com/example/testservice";
 
-interface Response {
-  payload: string;
-}
+type InternalJsonLambda<TResponse> = (event: object) => Promise<TResponse>;
+type TestLambdaHandler = InternalJsonLambda<HelloWorldResponse>;
 
-type TestLambdaHandler = (event: Event) => Promise<Response>;
-
-export const handler: TestLambdaHandler = async (event: Event) => {
-  if (event.payload === "crash") {
-    throw new Error("I am crashing.");
-  }
+export const handler: TestLambdaHandler = async (event: object) => {
+  const request = HelloWorldRequest.fromJSON(event);
 
   return {
-    payload: "Hello world!!!",
+    helloWorld: {
+      greeting: request.helloWorld?.greeting || "Hello World!",
+    },
   };
 };

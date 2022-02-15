@@ -1,0 +1,14 @@
+syntax="proto3";
+package com.example;
+
+message HelloWorld {
+  string greeting = 1;
+}
+
+message HelloWorldRequest {
+  HelloWorld helloWorld = 1;
+}
+
+message HelloWorldResponse {
+  HelloWorld helloWorld = 1;
+}
