@@ -12,3 +12,12 @@ message HelloWorldRequest {
 message HelloWorldResponse {
   HelloWorld helloWorld = 1;
 }
+
+message FloodSqsRequest {
+  uint32 messageSize = 1;
+  uint32 messageCount = 2;
+  uint32 delayMilliseconds = 3;
+}
+
+message FloodSqsResponse {
+}
