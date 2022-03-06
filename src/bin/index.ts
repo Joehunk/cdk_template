@@ -1,5 +1,15 @@
+import { call } from "redux-saga/effects";
+import { io } from "./middleware";
+import { runSaga } from "redux-saga";
+
+async function effectfulThing() {
+  console.log("Hello world");
+}
+
 async function main() {
-  console.log("Hello world.");
+  await runSaga(io, function* saga() {
+    yield call(effectfulThing);
+  }).toPromise();
 }
 
 if (require.main === module) {
