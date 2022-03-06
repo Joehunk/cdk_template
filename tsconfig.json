@@ -25,7 +25,9 @@
       "./node_modules/@types"
     ]
   },
+  "include": ["src/**/*"],
   "exclude": [
+    "src/tests/*",
     "node_modules",
     "cdk.out",
     "dist"
