@@ -6,7 +6,7 @@ import "validate/validate.proto";
 
 message HelloWorld {
   string greeting = 1;
-  uint32 value = 2 [(validate.rules).uint32.gt    = 999];
+  uint32 value = 2 [(validate.rules).uint32.lt    = 999];
 }
 
 message HelloWorldRequest {
