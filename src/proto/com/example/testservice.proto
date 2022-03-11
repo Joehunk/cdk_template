@@ -1,8 +1,11 @@
 syntax="proto3";
 package com.example;
 
+import "validate/validate.proto";
+
 message HelloWorld {
   string greeting = 1;
+  uint32 value = 2 [(validate.rules).uint32.gt    = 999];
 }
 
 message HelloWorldRequest {

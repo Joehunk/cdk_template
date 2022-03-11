@@ -9,13 +9,14 @@
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
-    "gensrc": "mkdir -p ./gensrc && protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./gensrc --proto_path=./src/proto ./src/proto/com/example/*.proto",
+    "gensrc": "./gensrc.sh",
     "lint": "eslint \"src/**/*.ts\"",
     "lint-fix": "eslint --fix \"src/**/*.ts\"",
     "format": "prettier --write \"src/**/*.ts\"",
     "format-check": "prettier --check \"src/**/*.ts\""
   },
   "devDependencies": {
+    "@protobuf-ts/plugin": "^2.2.2",
     "@protobuf-ts/protoc": "^2.2.2",
     "@types/jest": "^26.0.10",
     "@types/node": "10.17.27",

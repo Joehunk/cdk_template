@@ -18,6 +18,7 @@ module.exports = {
     "@typescript-eslint",
     "sort-imports-es6-autofix"
   ],
+  ignorePatterns: ['dist/*', 'gensrc/*'],
   "rules": {
     "block-spacing": [
       "error"

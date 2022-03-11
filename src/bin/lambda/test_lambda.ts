@@ -1,14 +1,15 @@
-import { HelloWorldRequest, HelloWorldResponse } from "../../../gensrc/com/example/testservice";
+import { HelloWorld, HelloWorldRequest, HelloWorldResponse } from "../../../gensrc/com/example/testservice";
 
-type InternalJsonLambda<TResponse> = (event: object) => Promise<TResponse>;
+type Json = number | string | null | boolean | { [key: string]: Json } | Array<Json>;
+type InternalJsonLambda<TResponse> = (event: Json) => Promise<TResponse>;
 type TestLambdaHandler = InternalJsonLambda<HelloWorldResponse>;
 
-export const handler: TestLambdaHandler = async (event: object) => {
-  const request = HelloWorldRequest.fromJSON(event);
+export const handler: TestLambdaHandler = async (event: Json) => {
+  const request = HelloWorldRequest.fromJson(event);
 
   return {
-    helloWorld: {
+    helloWorld: HelloWorld.create({
       greeting: request.helloWorld?.greeting || "Hello World!",
-    },
+    }),
   };
 };
