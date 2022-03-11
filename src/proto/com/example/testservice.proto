@@ -1,6 +1,7 @@
 syntax="proto3";
 package com.example;
 
+import "google/api/annotations.proto";
 import "validate/validate.proto";
 
 message HelloWorld {
@@ -14,4 +15,10 @@ message HelloWorldRequest {
 
 message HelloWorldResponse {
   HelloWorld helloWorld = 1;
+}
+
+service HelloWorldService {
+  rpc SayHello (HelloWorldRequest) returns (HelloWorldResponse) {
+    option (google.api.http) = { get: "/greetings/{greeting}" };
+  }
 }
