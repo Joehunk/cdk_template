@@ -10,11 +10,20 @@ message HelloWorld {
 }
 
 message HelloWorldRequest {
-  HelloWorld helloWorld = 1;
+  HelloWorld hello_world = 1;
 }
 
 message HelloWorldResponse {
-  HelloWorld helloWorld = 1;
+  HelloWorld hello_world = 1;
+}
+
+message RecursiveMessage {
+  string the_string = 1 [(validate.rules).string = {
+    min_len: 2,
+    max_len: 8,
+  }];
+  uint32 the_number = 2 [(validate.rules).uint32.lt    = 999];
+  RecursiveMessage recursive = 3;
 }
 
 service HelloWorldService {

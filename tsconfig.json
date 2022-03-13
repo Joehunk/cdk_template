@@ -17,6 +17,7 @@
     "noUnusedParameters": false,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": false,
+    "noUncheckedIndexedAccess": true,
     "inlineSourceMap": true,
     "inlineSources": true,
     "experimentalDecorators": true,
