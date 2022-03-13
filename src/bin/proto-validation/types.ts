@@ -1,12 +1,12 @@
 import { FieldInfo, IMessageType } from "@protobuf-ts/runtime";
 
 export interface ValidateSuccess {
-  success: true;
+  readonly success: true;
 }
 
 export interface ValidateFailure {
-  success: false;
-  errorMessage: string;
+  readonly success: false;
+  readonly errorMessage: string;
 }
 
 export type Func<Args extends unknown[], Ret> = (...args: Args) => Ret;
@@ -18,6 +18,6 @@ export type FieldKind = FieldInfo["kind"];
 export type ValidatorFactory = (fieldInfo: FieldInfo, options: ValidateOptions) => Validator;
 
 export interface ValidateOptions {
-  readonly registry: Record<FieldKind, ValidatorFactory>;
-  readonly validatorCache: Map<IMessageType<object>, Validator>;
+  readonly registry: Readonly<Record<FieldKind, ValidatorFactory>>;
+  readonly mutableValidatorCache: Map<IMessageType<object>, Validator>;
 }

@@ -5,7 +5,6 @@ import {
   alwaysFailFactory,
   alwaysFailValidator,
   composeValidators,
-  dumpValidatorCache,
   getValidationRules,
   indent,
   nonNullishValidator,
@@ -13,11 +12,25 @@ import {
   validateSuccess,
 } from "./utils";
 
+const validationSystemError: (messageType: IMessageType<object>) => string = (
+  messageType
+) => `Invalid state: validator not present for type ${messageType.typeName}. 
+This is likely due to a bug in the validation system.`;
+
 const placeholderValidator: (messageType: IMessageType<object>) => Validator = (messageType) =>
-  alwaysFailValidator(
-    `Invalid state: validator not present for type ${messageType.typeName}. 
-    This is likely due to a bug in the validation system.`
-  );
+  alwaysFailValidator(validationSystemError(messageType));
+
+const recursionBreakingLazyValidator: (
+  messageType: IMessageType<object>,
+  validatorCache: Map<IMessageType<object>, Validator>
+) => Validator = (messageType, validatorCache) => (message) => {
+  const validator = validatorCache.get(messageType);
+
+  if (!validator) {
+    return validateFail(validationSystemError(messageType));
+  }
+  return validator(message);
+};
 
 export const messageValidatorFactory: ValidatorFactory = (fieldInfo, options) => {
   if (fieldInfo.kind !== "message") {
@@ -26,75 +39,47 @@ export const messageValidatorFactory: ValidatorFactory = (fieldInfo, options) =>
 
   const subMessageType = fieldInfo.T();
 
-  if (options.validatorCache.has(subMessageType)) {
-    // DEBUG
-    console.log("Returning validator from cache");
-    console.log(dumpValidatorCache(options.validatorCache));
-
-    const cache = options.validatorCache;
-
-    return (message: unknown) => {
-      // DEBUG
-      console.log("Inside validator being called");
-      console.log(dumpValidatorCache(options.validatorCache));
-
-      const validator = cache.get(subMessageType);
-
-      if (!validator) {
-        return validateFail(`Error: no validator for message type ${subMessageType.typeName}`);
-      }
-      return validator(message);
-    };
+  if (options.mutableValidatorCache.has(subMessageType)) {
+    return recursionBreakingLazyValidator(subMessageType, options.mutableValidatorCache);
   }
 
-  options.validatorCache.set(subMessageType, placeholderValidator(subMessageType));
-
-  // DEBUG
-  console.log("Inserted placeholder");
-  console.log(dumpValidatorCache(options.validatorCache));
+  options.mutableValidatorCache.set(subMessageType, placeholderValidator(subMessageType));
 
   const isRequired = getValidationRules(fieldInfo).message?.required || false;
-  const subMessageValidator = isRequired
-    ? composeValidators(nonNullishValidator)(validatorForMessage(subMessageType, options))
-    : validatorForMessage(subMessageType, options);
+  const subMessageValidator = validatorForMessage(subMessageType, options);
+  const realValidator = isRequired ? composeValidators(nonNullishValidator)(subMessageValidator) : subMessageValidator;
 
-  options.validatorCache.set(subMessageType, subMessageValidator);
-
-  // DEBUG
-  console.log("Inserted real validator");
-  console.log(dumpValidatorCache(options.validatorCache));
-
-  return subMessageValidator;
+  options.mutableValidatorCache.set(subMessageType, realValidator);
+  return realValidator;
 };
 
-type FieldValidators = { [key: string]: Validator | undefined };
+type FieldValidatorsByFieldName = { [key: string]: Validator | undefined };
 type FieldValidatorFunction = (
-  fieldValidators: FieldValidators
+  fieldValidators: FieldValidatorsByFieldName
 ) => (fieldValue: unknown, fieldName: string) => ValidateResult;
 type ResultsByField = Record<string, ValidateResult>;
 
-const validateFieldOfMessage: FieldValidatorFunction =
-  (fieldValidators: FieldValidators) => (fieldValue: unknown, fieldName: string) => {
-    const fieldValidator = fieldValidators[fieldName];
+const validateFieldOfMessage: FieldValidatorFunction = (fieldValidators) => (fieldValue, fieldName) => {
+  const fieldValidator = fieldValidators[fieldName];
 
-    if (fieldValidator) {
-      return fieldValidator(fieldValue);
-    } else {
-      return {
-        success: false,
-        errorMessage: "unknown field",
-      };
-    }
-  };
+  if (fieldValidator) {
+    return fieldValidator(fieldValue);
+  } else {
+    return {
+      success: false,
+      errorMessage: "unknown field",
+    };
+  }
+};
 
-function formatErrorForField(result: ValidateResult, fieldName: string): string | null {
+const formatErrorForField: (result: ValidateResult, fieldName: string) => string | null = (result, fieldName) => {
   if (result.success) {
     return null;
   }
   return `${fieldName}: ${result.errorMessage}`;
-}
+};
 
-function coalesceResults(results: ResultsByField): ValidateResult {
+const coalesceResults: (results: ResultsByField) => ValidateResult = (results) => {
   const anyFailures = R.any(R.not, R.map(R.prop("success"), R.values(results)));
 
   if (!anyFailures) {
@@ -107,9 +92,9 @@ function coalesceResults(results: ResultsByField): ValidateResult {
       errorMessage: concatErrors(results),
     };
   }
-}
+};
 
-function createCompositeValidator(fieldValidators: FieldValidators): Validator {
+const createCompositeValidator: (fieldValidators: FieldValidatorsByFieldName) => Validator = (fieldValidators) => {
   return (message) => {
     if (typeof message === "object") {
       const allResults = R.mapObjIndexed(validateFieldOfMessage(fieldValidators), message as Record<string, unknown>);
@@ -122,7 +107,7 @@ function createCompositeValidator(fieldValidators: FieldValidators): Validator {
       };
     }
   };
-}
+};
 
 export const validatorForMessage: (messageType: IMessageType<object>, options: ValidateOptions) => Validator = (
   messageType,
