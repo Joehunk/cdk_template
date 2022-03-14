@@ -89,10 +89,13 @@ const coalesceResults: (results: ResultsByField) => ValidateResult = (results) =
   }
 };
 
+const isObjectWithAllStringProperties = (pet: unknown): pet is Record<string, unknown> =>
+  pet !== null && typeof pet === "object" && R.all((k) => typeof k === "string", Object.keys(pet));
+
 const createCompositeValidator: (fieldValidators: FieldValidatorsByFieldName) => Validator = (fieldValidators) => {
   return (message) => {
-    if (typeof message === "object") {
-      const allResults = R.mapObjIndexed(validateFieldOfMessage(fieldValidators), message as Record<string, unknown>);
+    if (isObjectWithAllStringProperties(message)) {
+      const allResults = R.mapObjIndexed(validateFieldOfMessage(fieldValidators), message);
 
       return coalesceResults(allResults);
     } else {
