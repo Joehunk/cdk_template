@@ -2,7 +2,14 @@ import * as R from "ramda";
 import { FieldInfo, ScalarType } from "@protobuf-ts/runtime";
 import { FieldRules, SFixed32Rules, SFixed64Rules } from "../../../gensrc/validate/validate";
 import { Right } from "purify-ts/Either";
-import { ValidateOptions, ValidateResult, ValidateSuccess, Validator, ValidatorFactory } from "./types";
+import {
+  ValidateFailure,
+  ValidateOptions,
+  ValidateResult,
+  ValidateSuccess,
+  Validator,
+  ValidatorFactory,
+} from "./types";
 import { alwaysFailValidator, getValidationRules, validateFail, validateSuccess } from "./utils";
 
 type SubValidatorGetter<TIn = unknown> = (
@@ -110,13 +117,20 @@ const convertToBigInt: Validator<bigint> = (message) => {
   }
 };
 
-const getIntegerValidator: SubValidatorGetter = (fieldInfo, fieldRules, options) => (message) => {
-  // Below is a much more elegant way to do this, and it works, but the TS types for Ramda don't honor
-  // the special feature of R.chain that works with fantasy-land-compatible Monads with a chain method.
-  // It works if I turn off type checking.
-  // R.pipe(convertToBigInt, R.chain(getBigIntValidator(fieldInfo, fieldRules, options)));
-  return convertToBigInt(message).chain(getBigIntValidator(fieldInfo, fieldRules, options));
-};
+type Chain<T> = { "fantasy-land/chain": T };
+
+export function chainR<A, ChainA extends Chain<unknown>, ChainB extends Chain<unknown>>(
+  fn: (n: A) => ChainB
+): (chain: ChainA) => ChainB {
+  // This is a hack to get around the fact that Ramda's TS types don't include the right typings to support the feature
+  // that lets it work with "fantasy-land" (a popular categories library).
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  return R.chain(fn);
+}
+
+const getIntegerValidator: SubValidatorGetter = (fieldInfo, fieldRules, options) =>
+  R.pipe(convertToBigInt, chainR(getBigIntValidator(fieldInfo, fieldRules, options)));
 
 const getBytesValidator: SubValidatorGetter = () => () => {
   return validateSuccess;
