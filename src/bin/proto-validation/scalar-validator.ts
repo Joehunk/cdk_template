@@ -1,35 +1,117 @@
-import { FieldInfo, IMessageType, ScalarType } from "@protobuf-ts/runtime";
-import { NetworkLoadBalancedEc2Service, NetworkLoadBalancedServiceRecordType } from "aws-cdk-lib/aws-ecs-patterns";
-import R = require("ramda");
-import { FieldRules } from "../../../gensrc/validate/validate";
-import { ValidateOptions, ValidateResult, Validator, ValidatorFactory } from "./types";
-import {
-  alwaysFailFactory,
-  alwaysFailValidator,
-  alwaysSuccessValidator,
-  composeValidators,
-  getValidationRules,
-  indent,
-  nonNullishValidator,
-  validateFail,
-  validateSuccess,
-} from "./utils";
+import * as R from "ramda";
+import { FieldInfo, ScalarType } from "@protobuf-ts/runtime";
+import { FieldRules, SFixed32Rules, SFixed64Rules } from "../../../gensrc/validate/validate";
+import { Right } from "purify-ts/Either";
+import { ValidateOptions, ValidateResult, ValidateSuccess, Validator, ValidatorFactory } from "./types";
+import { alwaysFailValidator, getValidationRules, validateFail, validateSuccess } from "./utils";
 
-type SubValidatorGetter = (fieldInfo: FieldInfo, fieldRules: FieldRules, options: ValidateOptions) => Validator;
+type SubValidatorGetter<TIn = unknown> = (
+  fieldInfo: FieldInfo,
+  fieldRules: FieldRules,
+  options: ValidateOptions
+) => Validator<ValidateSuccess, TIn>;
 
-const getBigIntValidator: SubValidatorGetter = (fieldInfo, fieldRules) => (message) => {
-  if (typeof message !== "bigint") {
-    return validateFail("Expected BigInt type");
+// A numeric type paired with the constraints capable of evaluating that type.
+// We use this so we can write one method that evaluates bigints and numbers.
+type NumberAndConstraints = [bigint, SFixed64Rules] | [number, SFixed32Rules];
+
+const evaluateNumericConstraints: <T extends NumberAndConstraints>(
+  constraints: T[1]
+) => (value: T[0]) => ValidateResult = (constraints) => (value) => {
+  if (constraints.const && constraints.const != value) {
+    return validateFail(`must equal exactly ${constraints.const}`);
+  }
+
+  if (constraints.gt && !(value > constraints.gt)) {
+    return validateFail(`must be greater than ${constraints.gt}`);
+  }
+
+  if (constraints.lt && !(value < constraints.lt)) {
+    return validateFail(`must be less than ${constraints.lt}`);
+  }
+
+  if (constraints.gte && !(value >= constraints.gte)) {
+    return validateFail(`must be greater than ${constraints.gte}`);
+  }
+
+  if (constraints.lte && !(value <= constraints.lte)) {
+    return validateFail(`must be less than ${constraints.lte}`);
+  }
+
+  if (constraints.in.length && !R.includes(value, constraints.in)) {
+    return validateFail(`must be one of ${constraints.in}`);
+  }
+
+  if (constraints.notIn.length && R.includes(value, constraints.notIn)) {
+    return validateFail(`must not be one of ${constraints.notIn}`);
   }
 
   return validateSuccess;
 };
 
-const getNumericValidator: SubValidatorGetter = (fieldInfo, fieldRules, options) =>
-  R.pipe(BigInt, getBigIntValidator(fieldInfo, fieldRules, options));
+const getBigIntValidator: SubValidatorGetter<bigint> = (_fieldInfo, fieldRules) => (message) => {
+  const ruleType = fieldRules.type;
 
-const getLongValidator: SubValidatorGetter = () => () => {
-  return validateSuccess;
+  switch (ruleType.oneofKind) {
+    case "fixed32":
+      return evaluateNumericConstraints(ruleType.fixed32)(message);
+    case "fixed64":
+      return evaluateNumericConstraints(ruleType.fixed64)(message);
+    case "sfixed32":
+      return evaluateNumericConstraints(ruleType.sfixed32)(message);
+    case "sfixed64":
+      return evaluateNumericConstraints(ruleType.sfixed64)(message);
+    case "sint32":
+      return evaluateNumericConstraints(ruleType.sint32)(message);
+    case "sint64":
+      return evaluateNumericConstraints(ruleType.sint64)(message);
+    case "int32":
+      return evaluateNumericConstraints(ruleType.int32)(message);
+    case "int64":
+      return evaluateNumericConstraints(ruleType.int64)(message);
+    case "uint32":
+      return evaluateNumericConstraints(ruleType.uint32)(message);
+    case "uint64":
+      return evaluateNumericConstraints(ruleType.uint64)(message);
+  }
+
+  return validateFail(`Unrecognized integer type ${ruleType.oneofKind}`);
+};
+
+const getFloatValidator: SubValidatorGetter = (_fieldInfo, fieldRules) => (message) => {
+  if (typeof message !== "number") {
+    return validateFail("Expected numeric type");
+  }
+
+  const ruleType = fieldRules.type;
+
+  switch (ruleType.oneofKind) {
+    case "float":
+      return evaluateNumericConstraints(ruleType.float)(message);
+    case "double":
+      return evaluateNumericConstraints(ruleType.double)(message);
+  }
+
+  return validateFail(`Unrecognized decimal/floating point type ${ruleType.oneofKind}`);
+};
+
+const convertToBigInt: Validator<bigint> = (message) => {
+  switch (typeof message) {
+    case "bigint":
+      return Right(message);
+
+    case "number":
+    case "boolean":
+    case "string":
+      return Right(BigInt(message));
+
+    default:
+      return validateFail(`Expected a type that could be converted to BigInt but got ${JSON.stringify(message)}`);
+  }
+};
+
+const getIntegerValidator: SubValidatorGetter = (fieldInfo, fieldRules, options) => (message) => {
+  return convertToBigInt(message).chain(getBigIntValidator(fieldInfo, fieldRules, options));
 };
 
 const getBytesValidator: SubValidatorGetter = () => () => {
@@ -37,6 +119,32 @@ const getBytesValidator: SubValidatorGetter = () => () => {
 };
 
 const getBoolValidator: SubValidatorGetter = () => () => {
+  return validateSuccess;
+};
+
+const getStringValidator: SubValidatorGetter = (_, fieldRules) => (message) => {
+  if (typeof message !== "string") {
+    return validateFail("Expected string type");
+  }
+
+  const ruleType = fieldRules.type;
+
+  if (ruleType.oneofKind !== "string") {
+    return validateFail("Attempted to validate string with non-string validation rules.");
+  }
+
+  if (ruleType.string.const && ruleType.string.const !== message) {
+    return validateFail(`must equal exact string: ${ruleType.string.const}`);
+  }
+
+  if (ruleType.string.minLen && message.length < ruleType.string.minLen) {
+    return validateFail(`length must be at least ${ruleType.string.minLen}`);
+  }
+
+  if (ruleType.string.maxLen && message.length > ruleType.string.maxLen) {
+    return validateFail(`length must be at least ${ruleType.string.maxLen}`);
+  }
+
   return validateSuccess;
 };
 
@@ -50,27 +158,27 @@ export const scalarValidatorFactory: ValidatorFactory = (fieldInfo, options) => 
   switch (fieldInfo.T) {
     case ScalarType.DOUBLE:
     case ScalarType.FLOAT:
+      return getFloatValidator(fieldInfo, validateRules, options);
+
     case ScalarType.FIXED32:
     case ScalarType.INT32:
     case ScalarType.UINT32:
     case ScalarType.SINT32:
     case ScalarType.SFIXED32:
-      return getNumericValidator(fieldInfo, validateRules, options);
-
     case ScalarType.FIXED64:
     case ScalarType.SFIXED64:
     case ScalarType.INT64:
     case ScalarType.UINT64:
     case ScalarType.SINT64:
-      return getLongValidator(fieldInfo, validateRules, options);
+      return getIntegerValidator(fieldInfo, validateRules, options);
 
     case ScalarType.BYTES:
       return getBytesValidator(fieldInfo, validateRules, options);
 
     case ScalarType.BOOL:
       return getBoolValidator(fieldInfo, validateRules, options);
-  }
 
-  // TODO Log warning
-  return alwaysSuccessValidator;
+    case ScalarType.STRING:
+      return getStringValidator(fieldInfo, validateRules, options);
+  }
 };

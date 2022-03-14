@@ -1,3 +1,4 @@
+import { Left } from "purify-ts/Either";
 import { RecursiveMessage } from "../../../gensrc/com/example/testservice";
 import { validateMessage } from "../../bin/proto-validation";
 
@@ -16,14 +17,14 @@ const badValue: RecursiveMessage = {
 
 test("Reports multiple errors properly", () => {
   const result = validateMessage(badValue, RecursiveMessage);
+  const expected = Left({
+    success: false,
+    errorMessage: `com.example.RecursiveMessage validation failed.
+  recursive: com.example.RecursiveMessage validation failed.
+    theNumber: must be less than 999
+    recursive: com.example.RecursiveMessage validation failed.
+      theString: length must be at least 2`,
+  });
 
-  if (result.success) {
-    fail("Expected failure");
-  } else {
-    expect(result.errorMessage).toEqual(`Validation failed:
-recursive:
-  theNumber: must be less than 999
-  recursive:
-    theString: length must be at least 2`);
-  }
+  expect(result).toMatchObject(expected);
 });

@@ -1,10 +1,9 @@
 import { FieldInfo, IMessageType } from "@protobuf-ts/runtime";
 import R = require("ramda");
-import { ValidateOptions, ValidateResult, Validator, ValidatorFactory } from "./types";
+import { ValidateFailure, ValidateOptions, ValidateResult, Validator, ValidatorFactory } from "./types";
 import {
   alwaysFailFactory,
   alwaysFailValidator,
-  composeValidators,
   getValidationRules,
   indent,
   nonNullishValidator,
@@ -47,7 +46,9 @@ export const messageValidatorFactory: ValidatorFactory = (fieldInfo, options) =>
 
   const isRequired = getValidationRules(fieldInfo).message?.required || false;
   const subMessageValidator = validatorForMessage(subMessageType, options);
-  const realValidator = isRequired ? composeValidators(nonNullishValidator)(subMessageValidator) : subMessageValidator;
+  const realValidator = isRequired
+    ? (message: unknown) => nonNullishValidator(message).chain((_) => subMessageValidator(message))
+    : subMessageValidator;
 
   options.mutableValidatorCache.set(subMessageType, realValidator);
   return realValidator;
@@ -65,32 +66,28 @@ const validateFieldOfMessage: FieldValidatorFunction = (fieldValidators) => (fie
   if (fieldValidator) {
     return fieldValidator(fieldValue);
   } else {
-    return {
-      success: false,
-      errorMessage: "unknown field",
-    };
+    return validateFail("unknownField");
   }
 };
 
 const formatErrorForField: (result: ValidateResult, fieldName: string) => string | null = (result, fieldName) => {
-  if (result.success) {
-    return null;
-  }
-  return `${fieldName}: ${result.errorMessage}`;
+  return result
+    .bimap(
+      (failure) => `${fieldName}: ${failure.errorMessage}`,
+      (_success) => null
+    )
+    .extract();
 };
 
 const coalesceResults: (results: ResultsByField) => ValidateResult = (results) => {
-  const anyFailures = R.any(R.not, R.map(R.prop("success"), R.values(results)));
+  const anyFailures = R.any((result) => result.isLeft(), R.values(results));
 
   if (!anyFailures) {
-    return { success: true };
+    return validateSuccess;
   } else {
     const concatErrors = R.pipe(R.mapObjIndexed(formatErrorForField), R.values, R.reject(R.isNil), R.join("\n"));
 
-    return {
-      success: false,
-      errorMessage: concatErrors(results),
-    };
+    return validateFail(concatErrors(results));
   }
 };
 
@@ -101,13 +98,17 @@ const createCompositeValidator: (fieldValidators: FieldValidatorsByFieldName) =>
 
       return coalesceResults(allResults);
     } else {
-      return {
-        success: false,
-        errorMessage: `Attempted to validate non-object type: ${JSON.stringify(message)}`,
-      };
+      return validateFail(`Attempted to validate non-object type: ${JSON.stringify(message)}`);
     }
   };
 };
+
+const decorateMessageError: (messageType: IMessageType<object>) => (failure: ValidateFailure) => ValidateFailure =
+  (messageType) => (failure) =>
+    R.mergeLeft(
+      { errorMessage: `${messageType.typeName} validation failed.\n${indent(2)(failure.errorMessage)}` },
+      failure
+    );
 
 export const validatorForMessage: (messageType: IMessageType<object>, options: ValidateOptions) => Validator = (
   messageType,
@@ -128,15 +129,6 @@ export const validatorForMessage: (messageType: IMessageType<object>, options: V
       return validateSuccess;
     }
 
-    const result = messageValidator(message);
-
-    if (result.success) {
-      return result;
-    } else {
-      return {
-        success: false,
-        errorMessage: `${messageType.typeName}:\n${indent(2)(result.errorMessage)}`,
-      };
-    }
+    return messageValidator(message).mapLeft(decorateMessageError(messageType));
   };
 };
