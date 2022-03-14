@@ -111,6 +111,10 @@ const convertToBigInt: Validator<bigint> = (message) => {
 };
 
 const getIntegerValidator: SubValidatorGetter = (fieldInfo, fieldRules, options) => (message) => {
+  // Below is a much more elegant way to do this, and it works, but the TS types for Ramda don't honor
+  // the special feature of R.chain that works with fantasy-land-compatible Monads with a chain method.
+  // It works if I turn off type checking.
+  // R.pipe(convertToBigInt, R.chain(getBigIntValidator(fieldInfo, fieldRules, options)));
   return convertToBigInt(message).chain(getBigIntValidator(fieldInfo, fieldRules, options));
 };
 
