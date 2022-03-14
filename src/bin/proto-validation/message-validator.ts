@@ -46,9 +46,7 @@ export const messageValidatorFactory: ValidatorFactory = (fieldInfo, options) =>
 
   const isRequired = getValidationRules(fieldInfo).message?.required || false;
   const subMessageValidator = validatorForMessage(subMessageType, options);
-  const realValidator = isRequired
-    ? (message: unknown) => nonNullishValidator(message).chain((_) => subMessageValidator(message))
-    : subMessageValidator;
+  const realValidator = isRequired ? R.pipe(nonNullishValidator, R.chain(subMessageValidator)) : subMessageValidator;
 
   options.mutableValidatorCache.set(subMessageType, realValidator);
   return realValidator;

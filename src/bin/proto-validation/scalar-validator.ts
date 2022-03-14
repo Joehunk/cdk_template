@@ -2,17 +2,10 @@ import * as R from "ramda";
 import { FieldInfo, ScalarType } from "@protobuf-ts/runtime";
 import { FieldRules, SFixed32Rules, SFixed64Rules } from "../../../gensrc/validate/validate";
 import { Right } from "purify-ts/Either";
-import {
-  ValidateFailure,
-  ValidateOptions,
-  ValidateResult,
-  ValidateSuccess,
-  Validator,
-  ValidatorFactory,
-} from "./types";
+import { ValidateOptions, ValidateResult, ValidateSuccess, Validator, ValidatorFactory } from "./types";
 import { alwaysFailValidator, getValidationRules, validateFail, validateSuccess } from "./utils";
 
-type SubValidatorGetter<TIn = unknown> = (
+type ValidatorGetter<TIn = unknown> = (
   fieldInfo: FieldInfo,
   fieldRules: FieldRules,
   options: ValidateOptions
@@ -56,7 +49,7 @@ const evaluateNumericConstraints: <T extends NumberAndConstraints>(
   return validateSuccess;
 };
 
-const getBigIntValidator: SubValidatorGetter<bigint> = (_fieldInfo, fieldRules) => (message) => {
+const getBigIntValidator: ValidatorGetter<bigint> = (_fieldInfo, fieldRules) => (message) => {
   const ruleType = fieldRules.type;
 
   switch (ruleType.oneofKind) {
@@ -85,7 +78,7 @@ const getBigIntValidator: SubValidatorGetter<bigint> = (_fieldInfo, fieldRules) 
   return validateFail(`Unrecognized integer type ${ruleType.oneofKind}`);
 };
 
-const getFloatValidator: SubValidatorGetter = (_fieldInfo, fieldRules) => (message) => {
+const getFloatValidator: ValidatorGetter = (_fieldInfo, fieldRules) => (message) => {
   if (typeof message !== "number") {
     return validateFail("Expected numeric type");
   }
@@ -117,30 +110,18 @@ const convertToBigInt: Validator<bigint> = (message) => {
   }
 };
 
-type Chain<T> = { "fantasy-land/chain": T };
+const getIntegerValidator: ValidatorGetter = (fieldInfo, fieldRules, options) =>
+  R.pipe(convertToBigInt, R.chain(getBigIntValidator(fieldInfo, fieldRules, options)));
 
-export function chainR<A, ChainA extends Chain<unknown>, ChainB extends Chain<unknown>>(
-  fn: (n: A) => ChainB
-): (chain: ChainA) => ChainB {
-  // This is a hack to get around the fact that Ramda's TS types don't include the right typings to support the feature
-  // that lets it work with "fantasy-land" (a popular categories library).
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  return R.chain(fn);
-}
-
-const getIntegerValidator: SubValidatorGetter = (fieldInfo, fieldRules, options) =>
-  R.pipe(convertToBigInt, chainR(getBigIntValidator(fieldInfo, fieldRules, options)));
-
-const getBytesValidator: SubValidatorGetter = () => () => {
+const getBytesValidator: ValidatorGetter = () => () => {
   return validateSuccess;
 };
 
-const getBoolValidator: SubValidatorGetter = () => () => {
+const getBoolValidator: ValidatorGetter = () => () => {
   return validateSuccess;
 };
 
-const getStringValidator: SubValidatorGetter = (_, fieldRules) => (message) => {
+const getStringValidator: ValidatorGetter = (_, fieldRules) => (message) => {
   if (typeof message !== "string") {
     return validateFail("Expected string type");
   }
